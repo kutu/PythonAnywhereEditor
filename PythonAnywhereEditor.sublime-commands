@@ -1,0 +1,7 @@
+[
+	{ "caption": "Python Anywhere Editor: Set Username", "command": "prompt_python_anywhere_username" },
+	{ "caption": "Python Anywhere Editor: Login", "command": "prompt_python_anywhere_login" },
+	{ "caption": "Python Anywhere Editor: New File", "command": "prompt_python_anywhere_new_file" },
+	{ "caption": "Python Anywhere Editor: Open File", "command": "prompt_python_anywhere_open_file" },
+	{ "caption": "Python Anywhere Editor: Reload Web Apps", "command": "python_anywhere_reload" }
+]
