@@ -102,12 +102,15 @@ class PromptPythonAnywhereUsername(sublime_plugin.WindowCommand):
         self.window.show_input_panel("Username:", username,
             self.on_done, None, clear_commands)
 
-    def on_done(self, username):
-        if not username:
+    def on_done(self, new_username):
+        if not new_username:
             self.run()
             return
-        settings.set("username", username)
-        sublime.save_settings(SETTINGS_FILENAME)
+        old_username = settings.get('username')
+        if old_username != new_username:
+            settings.set("username", username)
+            sublime.save_settings(SETTINGS_FILENAME)
+            service.clear_cookie()
         run_next_command()
 
 class PromptPythonAnywhereLogin(sublime_plugin.WindowCommand):
