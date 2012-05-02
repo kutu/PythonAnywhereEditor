@@ -22,8 +22,7 @@ class NoRedirectHandler(urllib2.HTTPRedirectHandler):
     http_error_307 = http_error_302
 
 cookie_handler = urllib2.HTTPCookieProcessor()
-proxy_handler = urllib2.ProxyHandler(dict(http="localhost:8182", https="localhost:8182"))
-opener = urllib2.build_opener(NoRedirectHandler(), cookie_handler, proxy_handler)
+opener = urllib2.build_opener(NoRedirectHandler(), cookie_handler)
 opener.addheaders = [('User-Agent', USER_AGENT)]
 
 class BackgroundThread(threading.Thread):
