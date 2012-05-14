@@ -297,7 +297,6 @@ def create_tmp_file(file_path, content=None):
         os.makedirs(os.path.dirname(file_path_abs))
     try:
         f = open(file_path_abs, "w")
-        print content
         if content != None:
             f.write(content)
         f.close()
