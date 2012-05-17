@@ -108,7 +108,7 @@ class PromptPythonAnywhereUsername(sublime_plugin.WindowCommand):
             return
         old_username = settings.get('username')
         if old_username != new_username:
-            settings.set("username", username)
+            settings.set("username", new_username)
             sublime.save_settings(SETTINGS_FILENAME)
             service.clear_cookie()
         run_next_command()
