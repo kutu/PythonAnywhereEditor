@@ -36,33 +36,36 @@ def check_in_process(fn):
         return fn(*args, **kwargs)
     return wrapped
 
-def processing(fn):
+def processing(show_animation=True):
     '''decorator for progress animation'''
-    def wrapped(self, thread, *args, **kwargs):
-        global in_process
-        in_process = True
-        counter = int(kwargs.pop('counter', 0))
-        if thread.is_alive():
-            if counter % FRAMES_PER_PING == 0:
-                frame_index = counter / FRAMES_PER_PING % len(PROGRESS_FRAMES)
-                frame = PROGRESS_FRAMES[frame_index]
-                anim_str = " %s " % frame
-                log(anim_str, timestamp=False, new_line=False,
-                    replace_last=len(anim_str) if counter else 0)
-            sublime.set_timeout(
-                lambda: wrapped(self, thread, *args, counter=counter+1, **kwargs),
-                THREAD_PING)
-        else:
-            in_process = False
-            log(" ... ", timestamp=False, new_line=False,
-                replace_last=(len(PROGRESS_FRAMES[0]) + 2) if counter else 0)
-            if thread.error:
-                clear_commands()
-                log(thread.error, timestamp=False)
+    def decorator(fn):
+        def wrapped(self, thread, *args, **kwargs):
+            global in_process
+            in_process = True
+            counter = int(kwargs.pop('counter', 0))
+            if thread.is_alive():
+                if show_animation and counter % FRAMES_PER_PING == 0:
+                    frame_index = counter / FRAMES_PER_PING % len(PROGRESS_FRAMES)
+                    frame = PROGRESS_FRAMES[frame_index]
+                    anim_str = " %s " % frame
+                    log(anim_str, timestamp=False, new_line=False,
+                        replace_last=len(anim_str) if counter else 0)
+                sublime.set_timeout(
+                    lambda: wrapped(self, thread, *args, counter=counter+1, **kwargs),
+                    THREAD_PING)
             else:
-                fn(self, thread, *args, **kwargs)
-                run_next_command()
-    return wrapped
+                in_process = False
+                if show_animation:
+                    log(" ... ", timestamp=False, new_line=False,
+                        replace_last=(len(PROGRESS_FRAMES[0]) + 2) if counter else 0)
+                if thread.error:
+                    clear_commands()
+                    log(thread.error, timestamp=False)
+                else:
+                    fn(self, thread, *args, **kwargs)
+                    run_next_command()
+        return wrapped
+    return decorator
 
 def username_required(next):
     '''decorator for username prompt if not exist'''
@@ -131,7 +134,7 @@ class PromptPythonAnywhereLogin(sublime_plugin.WindowCommand):
         thread.start()
         self.handle_thread(thread)
 
-    @processing
+    @processing()
     def handle_thread(self, thread):
         log("success", timestamp=False)
 
@@ -168,7 +171,7 @@ class PromptPythonAnywhereNewFile(sublime_plugin.WindowCommand):
         thread.start()
         self.handle_thread(thread, file_path)
 
-    @processing
+    @processing()
     def handle_thread(self, thread, file_path):
         log("success", timestamp=False)
         open_tmp_file(self.window, file_path)
@@ -198,13 +201,57 @@ class PromptPythonAnywhereOpenFile(sublime_plugin.WindowCommand):
         thread.start()
         self.handle_thread(thread, file_path)
 
-    @processing
+    @processing()
     def handle_thread(self, thread, file_path):
         if thread.result == None:
             log("something gone wrong", timestamp=False)
         else:
             log("success", timestamp=False)
             open_tmp_file(self.window, file_path, thread.result)
+
+class PythonAnywhereSyncFile(sublime_plugin.TextCommand):
+    @login_required("python_anywhere_sync_file")
+    def run(self, edit):
+        if self.view.settings().get("is_python_anywhere_file"):
+            self.sync(edit)
+
+    def sync(self, edit):
+        file_path = self.view.settings().get("python_anywhere_file_path")
+
+        username = settings.get("username")
+        thread = service.OpenFileThread(
+            kwargs=dict(username=username, file_path=file_path))
+        thread.start()
+
+        self.handle_thread(thread, edit, file_path)
+
+    @processing(False)
+    def handle_thread(self, thread, edit, file_path):
+        if thread.result == None:
+           log("something gone wrong while syncing /%s" % file_path)
+        else:
+            log("synced /%s" % file_path)
+
+            visible_region = self.view.visible_region()
+            viewport = self.view.viewport_position()
+            sel = [r for r in self.view.sel()]
+
+            self.view.replace(edit, sublime.Region(0, self.view.size()),
+                thread.result)
+
+            self.view.sel().clear()
+            for r in sel:
+                self.view.sel().add(r)
+            sublime.set_timeout(
+                lambda: self.view.set_viewport_position(viewport, False), 1)
+
+class PythonAnywhereSyncOpenedFiles(sublime_plugin.WindowCommand):
+    @login_required("python_anywhere_sync_opened_files")
+    def run(self):
+        log("sync opened files")
+        for window in sublime.windows():
+            for view in window.views():
+                view.run_command("python_anywhere_sync_file")
 
 class PythonAnywhereEventListener(sublime_plugin.EventListener):
     @check_in_process
@@ -225,7 +272,7 @@ class PythonAnywhereEventListener(sublime_plugin.EventListener):
         thread.start()
         self.handle_thread(thread)
 
-    @processing
+    @processing()
     def handle_thread(self, thread):
         log("success", timestamp=False)
 
@@ -258,7 +305,7 @@ class PythonAnywhereReload(sublime_plugin.WindowCommand):
         thread.start()
         self.handle_thread(thread)
 
-    @processing
+    @processing()
     def handle_thread(self, thread):
         log("success", timestamp=False)
 
