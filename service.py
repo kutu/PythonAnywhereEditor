@@ -77,7 +77,7 @@ class SaveFileThread(BackgroundThread):
             urllib.urlencode(dict(new_contents=content)))
         check_result(result)
 
-class ReloadWbAppsThread(BackgroundThread):
+class ReloadWebAppsThread(BackgroundThread):
     def process(self, username):
         result = opener.open(RELOAD_URL % username)
         check_result(result)

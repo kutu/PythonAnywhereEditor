@@ -254,7 +254,7 @@ class PythonAnywhereReload(sublime_plugin.WindowCommand):
     def run(self):
         log("reload web apps", new_line=False)
         username = settings.get("username")
-        thread = service.ReloadWbAppsThread(kwargs=dict(username=username))
+        thread = service.ReloadWebAppsThread(kwargs=dict(username=username))
         thread.start()
         self.handle_thread(thread)
 
