@@ -230,6 +230,8 @@ class PythonAnywhereEventListener(sublime_plugin.EventListener):
         log("success", timestamp=False)
 
     def on_close(self, view):
+        if not view.settings().get("is_python_anywhere_file"):
+            return
         file_path = view.settings().get("python_anywhere_file_path")
         tmp_file_path = os.path.join(PLUGIN_NAME, file_path)
         # remove file
