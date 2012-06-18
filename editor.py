@@ -228,7 +228,7 @@ class PythonAnywhereSyncFile(sublime_plugin.TextCommand):
     @processing(False)
     def handle_thread(self, thread, edit, file_path):
         if thread.result == None:
-           log("something gone wrong while syncing /%s" % file_path)
+            log("something gone wrong while syncing /%s" % file_path)
         else:
             log("synced /%s" % file_path)
 
@@ -245,6 +245,9 @@ class PythonAnywhereSyncFile(sublime_plugin.TextCommand):
             sublime.set_timeout(
                 lambda: self.view.set_viewport_position(viewport, False), 1)
 
+            self.view.settings().set("python_anywhere_dont_save_me", True)
+            self.view.run_command("save")
+
 class PythonAnywhereSyncOpenedFiles(sublime_plugin.WindowCommand):
     @login_required("python_anywhere_sync_opened_files")
     def run(self):
@@ -256,6 +259,9 @@ class PythonAnywhereSyncOpenedFiles(sublime_plugin.WindowCommand):
 class PythonAnywhereEventListener(sublime_plugin.EventListener):
     @check_in_process
     def on_post_save(self, view):
+        if view.settings().has("python_anywhere_dont_save_me"):
+            view.settings().erase("python_anywhere_dont_save_me")
+            return
         if view.settings().get("is_python_anywhere_file"):
             self.save(view)
 
