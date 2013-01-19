@@ -8,7 +8,8 @@ USER_AGENT = "SublimeText2 - %s" % editor.PLUGIN_NAME
 BASE_URL = "https://www.pythonanywhere.com"
 LOGIN_URL = BASE_URL + "/login/"
 FILES_URL = BASE_URL + "/user/%s/files/%s"
-RELOAD_URL = BASE_URL + "/user/%s/webapps/reload"
+WEB_APPS_LIST_URL = BASE_URL + "/user/%s/webapps/"
+WEB_APP_RELOAD_URL = BASE_URL + "/user/%s/webapps/%s/reload"
 
 class NoRedirectHandler(urllib2.HTTPRedirectHandler):
     def http_error_302(self, req, fp, code, msg, headers):
@@ -77,9 +78,14 @@ class SaveFileThread(BackgroundThread):
             urllib.urlencode(dict(new_contents=content)))
         check_result(result)
 
-class ReloadWebAppsThread(BackgroundThread):
+class WebAppsListThread(BackgroundThread):
     def process(self, username):
-        result = opener.open(RELOAD_URL % username)
+        result = opener.open(WEB_APPS_LIST_URL % username)
+        self.result = check_result(result)
+
+class ReloadWebAppsThread(BackgroundThread):
+    def process(self, username, web_app_id):
+        result = opener.open(WEB_APP_RELOAD_URL % (username, web_app_id))
         check_result(result)
 
 

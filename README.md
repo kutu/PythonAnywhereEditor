@@ -28,6 +28,7 @@ Usage
 * `Open File` prompt for filename, load it and open
 * `Sync File` reload file content from server
 * `Sync All Opened Files` reload all opened files content from server
+* `Web Apps List`
 * `Reload Web Apps`
 
 For save opened file just press `ctrl+s / cmd+s`

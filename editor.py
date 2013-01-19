@@ -1,6 +1,7 @@
 import sublime, sublime_plugin
-import datetime, os
+import datetime, os, re
 import tempfile
+from BeautifulSoup import BeautifulSoup
 
 PLUGIN_NAME = "PythonAnywhereEditor"
 SETTINGS_FILENAME = "%s.sublime-settings" % PLUGIN_NAME
@@ -36,7 +37,7 @@ def check_in_process(fn):
         return fn(*args, **kwargs)
     return wrapped
 
-def processing(show_animation=True):
+def processing(show_animation=True, autorun_next_command=True):
     '''decorator for progress animation'''
     def decorator(fn):
         def wrapped(self, thread, *args, **kwargs):
@@ -63,7 +64,8 @@ def processing(show_animation=True):
                     log(thread.error, timestamp=False)
                 else:
                     fn(self, thread, *args, **kwargs)
-                    run_next_command()
+                    if autorun_next_command:
+                        run_next_command()
         return wrapped
     return decorator
 
@@ -302,12 +304,67 @@ class PythonAnywhereEventListener(sublime_plugin.EventListener):
         finally:
             os.chdir(curdir)
 
+class PythonAnywhereWebAppsList(sublime_plugin.WindowCommand):
+    @login_required("python_anywhere_web_apps_list")
+    def run(self):
+        log("load web apps list", new_line=False)
+        username = settings.get("username")
+        thread = service.WebAppsListThread(kwargs=dict(username=username))
+        thread.start()
+        self.handle_thread(thread)
+
+    @processing(autorun_next_command=False)
+    def handle_thread(self, thread):
+        if thread.result == None:
+            log("something gone wrong while getting web apps list", timestamp=False)
+        else:
+            # parse web apps list
+            soup = BeautifulSoup(thread.result)
+            web_apps_list = [
+                li.contents[1].strip()
+                for li in soup(['a'], href=re.compile(r'^#id_'))[0:-1]
+            ]
+            extract_id_rx = re.compile(r'webapps/(.*?)/')
+            web_apps_ids = [
+                re.search(extract_id_rx, f['action']).group(1)
+                for f in soup(['form'], {"class": "reload_web_app"})
+            ]
+
+            # save web apps ids in class variable
+            self.web_apps_ids = web_apps_ids
+
+            # if we have more then one web app, then show quick select panel
+            if len(web_apps_ids) > 1:
+                log("success", timestamp=False)
+                self.window.show_quick_panel(
+                    [
+                        [i[1], "Web App ID: %s" % i[0]]
+                        for i in zip(web_apps_ids, web_apps_list)
+                    ],
+                    self.on_choose_app
+                )
+            else:
+                log("success (web app id: %s)" % web_apps_ids[0], timestamp=False)
+                self.on_choose_app(0)
+
+    def on_choose_app(self, index):
+        settings.set("web_app_id", self.web_apps_ids[index])
+        sublime.save_settings(SETTINGS_FILENAME)
+        run_next_command()
+
 class PythonAnywhereReload(sublime_plugin.WindowCommand):
     @login_required("python_anywhere_reload")
     def run(self):
+        web_app_id = settings.get("web_app_id")
+        if not web_app_id:
+            next_command.append("python_anywhere_reload")
+            sublime.active_window().run_command("python_anywhere_web_apps_list")
+            return
+
         log("reload web apps", new_line=False)
         username = settings.get("username")
-        thread = service.ReloadWebAppsThread(kwargs=dict(username=username))
+        thread = service.ReloadWebAppsThread(kwargs=dict(username=username,
+            web_app_id=web_app_id))
         thread.start()
         self.handle_thread(thread)
 
