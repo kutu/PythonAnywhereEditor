@@ -74,8 +74,24 @@ class OpenFileThread(BackgroundThread):
 
 class SaveFileThread(BackgroundThread):
     def process(self, username, file_path, content):
-        result = opener.open(FILES_URL % (username, file_path),
-            urllib.urlencode(dict(new_contents=content)))
+        result = opener.open(LOGIN_URL)
+        csrftoken = None
+        for cookie in cookie_handler.cookiejar:
+            if cookie.name == "csrftoken":
+                csrftoken = cookie.value
+                break
+
+        if not csrftoken:
+            raise Exception, "couldn't find csrf token"
+
+        req = urllib2.Request(FILES_URL % (username, file_path))
+        req.data = urllib.urlencode(dict(
+            new_contents=content,
+            csrfmiddlewaretoken=csrftoken,
+            ))
+        req.headers = dict(Referer=FILES_URL % (username, file_path))
+        result = opener.open(req)
+
         check_result(result)
 
 class WebAppsListThread(BackgroundThread):
